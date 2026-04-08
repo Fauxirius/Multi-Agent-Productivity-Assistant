@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-Agent Productivity Assistant — AI Co-Pilot</title>
+  <meta name="description" content="A multi-agent AI system for managing tasks, schedules, and knowledge using Google Gemini, BigQuery, and Model Context Protocol." />
+
+  <!-- Google Fonts: Inter + JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ================================================================
+       DESIGN SYSTEM — CSS Custom Properties
+       ================================================================ */
+    :root {
+      /* Core palette */
+      --bg-primary: #0a0e1a;
+      --bg-secondary: #111827;
+      --bg-card: rgba(17, 24, 39, 0.7);
+      --bg-card-hover: rgba(31, 41, 55, 0.8);
+      --bg-input: rgba(17, 24, 39, 0.9);
+
+      /* Accent gradient */
+      --accent-1: #6366f1;
+      --accent-2: #8b5cf6;
+      --accent-3: #a78bfa;
+      --accent-4: #c084fc;
+
+      /* Status colors */
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --info: #3b82f6;
+
+      /* Text */
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+
+      /* Borders */
+      --border-subtle: rgba(148, 163, 184, 0.1);
+      --border-accent: rgba(99, 102, 241, 0.3);
+
+      /* Shadows */
+      --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.15);
+      --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
+
+      /* Spacing */
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+
+      /* Typography */
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    /* ================================================================
+       RESET & BASE
+       ================================================================ */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      font-size: 16px;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* Animated gradient background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 40%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 20%, rgba(139, 92, 246, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 60% at 50% 90%, rgba(167, 139, 250, 0.05) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+      animation: bgPulse 8s ease-in-out infinite alternate;
+    }
+
+    @keyframes bgPulse {
+      0% { opacity: 0.7; }
+      100% { opacity: 1; }
+    }
+
+    /* ================================================================
+       LAYOUT
+       ================================================================ */
+    .app-container {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* ================================================================
+       HEADER
+       ================================================================ */
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+      animation: fadeInDown 0.6s ease-out;
+    }
+
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .header__badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 1rem;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.1));
+      border: 1px solid var(--border-accent);
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent-3);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 1.25rem;
+    }
+
+    .header__badge .pulse-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.5); }
+    }
+
+    .header h1 {
+      font-size: clamp(1.75rem, 4vw, 2.5rem);
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-3) 50%, var(--accent-4) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+      margin-bottom: 0.75rem;
+    }
+
+    .header p {
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto;
+      font-weight: 300;
+    }
+
+    /* Agent chips */
+    .agent-chips {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .agent-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.75rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 999px;
+      font-size: 0.78rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .agent-chip:hover {
+      border-color: var(--border-accent);
+      color: var(--accent-3);
+      transform: translateY(-1px);
+    }
+
+    .agent-chip .icon {
+      font-size: 0.9rem;
+    }
+
+    /* ================================================================
+       INPUT SECTION
+       ================================================================ */
+    .input-section {
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow-card);
+      animation: fadeInUp 0.6s ease-out 0.15s both;
+      transition: border-color 0.3s ease;
+    }
+
+    .input-section:focus-within {
+      border-color: var(--border-accent);
+      box-shadow: var(--shadow-card), var(--shadow-glow);
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .input-section label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.75rem;
+    }
+
+    #prompt-input {
+      width: 100%;
+      min-height: 120px;
+      padding: 1rem 1.25rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      resize: vertical;
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+      outline: none;
+    }
+
+    #prompt-input::placeholder {
+      color: var(--text-muted);
+    }
+
+    #prompt-input:focus {
+      border-color: var(--accent-1);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .input-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 1rem;
+      gap: 1rem;
+    }
+
+    .example-prompts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .example-btn {
+      padding: 0.3rem 0.65rem;
+      background: rgba(99, 102, 241, 0.08);
+      border: 1px solid rgba(99, 102, 241, 0.15);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-family: var(--font-sans);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .example-btn:hover {
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--accent-3);
+      border-color: var(--border-accent);
+    }
+
+    #submit-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.7rem 1.75rem;
+      background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+      border: none;
+      border-radius: var(--radius-md);
+      color: #fff;
+      font-family: var(--font-sans);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+      flex-shrink: 0;
+    }
+
+    #submit-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(99, 102, 241, 0.45);
+    }
+
+    #submit-btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    #submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    #submit-btn .spinner {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    #submit-btn.loading .spinner {
+      display: inline-block;
+    }
+
+    #submit-btn.loading .btn-text {
+      display: none;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ================================================================
+       OUTPUT SECTION
+       ================================================================ */
+    .output-section {
+      animation: fadeInUp 0.6s ease-out 0.3s both;
+    }
+
+    /* Hidden by default */
+    #output-area {
+      display: none;
+    }
+
+    #output-area.visible {
+      display: block;
+    }
+
+    /* Status bar */
+    .response-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .response-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .response-status.success {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .response-status.error {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--error);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .response-meta {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .response-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    /* Final response card */
+    .response-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-card);
+    }
+
+    .response-card h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    #final-response {
+      font-size: 0.95rem;
+      line-height: 1.8;
+      color: var(--text-primary);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    /* Actions timeline */
+    .actions-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem;
+      box-shadow: var(--shadow-card);
+    }
+
+    .actions-card h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .action-timeline {
+      position: relative;
+      padding-left: 1.5rem;
+    }
+
+    .action-timeline::before {
+      content: '';
+      position: absolute;
+      left: 5px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--accent-1), var(--accent-4));
+      border-radius: 999px;
+    }
+
+    .action-item {
+      position: relative;
+      padding: 0.85rem 1rem;
+      margin-bottom: 0.75rem;
+      background: rgba(99, 102, 241, 0.04);
+      border: 1px solid rgba(99, 102, 241, 0.08);
+      border-radius: var(--radius-sm);
+      transition: all 0.2s ease;
+    }
+
+    .action-item:hover {
+      background: rgba(99, 102, 241, 0.08);
+      border-color: var(--border-accent);
+    }
+
+    .action-item::before {
+      content: '';
+      position: absolute;
+      left: -1.5rem;
+      top: 1.1rem;
+      width: 10px;
+      height: 10px;
+      background: var(--accent-2);
+      border: 2px solid var(--bg-primary);
+      border-radius: 50%;
+      z-index: 2;
+    }
+
+    .action-item .action-agent {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--accent-3);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    .action-item .action-tool {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+    }
+
+    .action-item .action-detail {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+      font-family: var(--font-mono);
+      word-break: break-all;
+    }
+
+    /* Empty state placeholder */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state .icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.4;
+    }
+
+    .empty-state p {
+      font-size: 0.95rem;
+    }
+
+    /* Loading state */
+    .loading-state {
+      display: none;
+      text-align: center;
+      padding: 3rem 2rem;
+    }
+
+    .loading-state.visible {
+      display: block;
+    }
+
+    .loading-orbit {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 1.5rem;
+      position: relative;
+    }
+
+    .loading-orbit .ring {
+      position: absolute;
+      inset: 0;
+      border: 2px solid transparent;
+      border-top-color: var(--accent-1);
+      border-radius: 50%;
+      animation: spin 1.2s linear infinite;
+    }
+
+    .loading-orbit .ring:nth-child(2) {
+      inset: 6px;
+      border-top-color: var(--accent-2);
+      animation-duration: 1.6s;
+      animation-direction: reverse;
+    }
+
+    .loading-orbit .ring:nth-child(3) {
+      inset: 12px;
+      border-top-color: var(--accent-4);
+      animation-duration: 2s;
+    }
+
+    .loading-state p {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    .loading-state .sub {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+    }
+
+    /* ================================================================
+       FOOTER
+       ================================================================ */
+    .footer {
+      text-align: center;
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      font-size: 0.78rem;
+    }
+
+    .footer a {
+      color: var(--accent-3);
+      text-decoration: none;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* ================================================================
+       RESPONSIVE
+       ================================================================ */
+    @media (max-width: 640px) {
+      .app-container {
+        padding: 1.25rem 1rem 3rem;
+      }
+      .input-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .example-prompts {
+        order: 2;
+        justify-content: center;
+      }
+      #submit-btn {
+        order: 1;
+        justify-content: center;
+      }
+      .response-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- ============================================================
+         HEADER
+         ============================================================ -->
+    <header class="header">
+      <div class="header__badge">
+        <span class="pulse-dot"></span>
+        Multi-Agent System Active
+      </div>
+      <h1>Productivity Assistant</h1>
+      <p>Your AI-powered project management co-pilot. Orchestrates tasks, knowledge, and scheduling through intelligent multi-agent coordination.</p>
+
+      <div class="agent-chips">
+        <span class="agent-chip"><span class="icon">🎯</span> Coordinator</span>
+        <span class="agent-chip"><span class="icon">✅</span> Task Manager</span>
+        <span class="agent-chip"><span class="icon">📚</span> Knowledge Base</span>
+        <span class="agent-chip"><span class="icon">📅</span> Scheduler</span>
+      </div>
+    </header>
+
+    <!-- ============================================================
+         INPUT SECTION
+         ============================================================ -->
+    <section class="input-section">
+      <label for="prompt-input">What would you like to accomplish?</label>
+      <textarea
+        id="prompt-input"
+        placeholder="e.g., Set up a new project kickoff: create an initial task list with 3 tasks, schedule a kickoff meeting for next Tuesday at 10 AM, and draft a project overview note..."
+        rows="4"
+      ></textarea>
+      <div class="input-actions">
+        <div class="example-prompts">
+          <button class="example-btn" data-prompt="Create 3 tasks for launching a new marketing campaign: design assets, write copy, and set up analytics tracking.">📋 Task List</button>
+          <button class="example-btn" data-prompt="Draft a project kickoff note with objectives, timeline, and team roles for a mobile app development project.">📝 Project Note</button>
+          <button class="example-btn" data-prompt="Schedule a team standup meeting for next Monday at 9:30 AM with the engineering team.">📅 Schedule</button>
+          <button class="example-btn" data-prompt="Set up a full project kickoff: create 3 initial tasks, draft a project overview document, and schedule a kickoff meeting for next Tuesday at 10 AM.">🚀 Full Kickoff</button>
+        </div>
+        <button id="submit-btn" type="button">
+          <span class="btn-text">Run Assistant ⚡</span>
+          <span class="spinner"></span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         LOADING STATE
+         ============================================================ -->
+    <div id="loading-state" class="loading-state">
+      <div class="loading-orbit">
+        <div class="ring"></div>
+        <div class="ring"></div>
+        <div class="ring"></div>
+      </div>
+      <p>Agents are collaborating on your request...</p>
+      <p class="sub">The Coordinator is delegating to sub-agents</p>
+    </div>
+
+    <!-- ============================================================
+         OUTPUT AREA
+         ============================================================ -->
+    <div id="output-area" class="output-section">
+      <!-- Status header -->
+      <div class="response-header">
+        <span id="response-status" class="response-status success">✓ Success</span>
+        <div class="response-meta">
+          <span id="meta-agents">🤖 Agents: —</span>
+          <span id="meta-time">⏱ Time: —</span>
+          <span id="meta-actions">⚡ Actions: —</span>
+        </div>
+      </div>
+
+      <!-- Final response -->
+      <div class="response-card">
+        <h3>💬 Assistant Response</h3>
+        <div id="final-response"></div>
+      </div>
+
+      <!-- Actions timeline -->
+      <div class="actions-card">
+        <h3>⚡ Actions Taken</h3>
+        <div id="actions-timeline" class="action-timeline"></div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         EMPTY STATE (shown initially)
+         ============================================================ -->
+    <div id="empty-state" class="empty-state">
+      <div class="icon">🤖</div>
+      <p>Enter a prompt above to see your multi-agent assistant in action</p>
+    </div>
+
+    <!-- ============================================================
+         FOOTER
+         ============================================================ -->
+    <footer class="footer">
+      <p>Powered by <a href="https://ai.google.dev/" target="_blank">Google Gemini</a> &bull; Built with Express, BigQuery &amp; MCP &bull; &copy; 2026</p>
+    </footer>
+  </div>
+
+  <!-- ================================================================
+       CLIENT-SIDE JAVASCRIPT
+       ================================================================ -->
+  <script>
+    (function () {
+      'use strict';
+
+      // DOM references
+      const promptInput = document.getElementById('prompt-input');
+      const submitBtn = document.getElementById('submit-btn');
+      const loadingState = document.getElementById('loading-state');
+      const outputArea = document.getElementById('output-area');
+      const emptyState = document.getElementById('empty-state');
+      const responseStatus = document.getElementById('response-status');
+      const finalResponse = document.getElementById('final-response');
+      const actionsTimeline = document.getElementById('actions-timeline');
+      const metaAgents = document.getElementById('meta-agents');
+      const metaTime = document.getElementById('meta-time');
+      const metaActions = document.getElementById('meta-actions');
+
+      // Example prompt buttons
+      document.querySelectorAll('.example-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          promptInput.value = btn.getAttribute('data-prompt');
+          promptInput.focus();
+          // Subtle highlight animation
+          promptInput.style.borderColor = 'var(--accent-1)';
+          setTimeout(() => { promptInput.style.borderColor = ''; }, 1000);
+        });
+      });
+
+      // Submit handler
+      submitBtn.addEventListener('click', handleSubmit);
+
+      // Ctrl/Cmd + Enter shortcut
+      promptInput.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          handleSubmit();
+        }
+      });
+
+      async function handleSubmit() {
+        const prompt = promptInput.value.trim();
+        if (!prompt) {
+          promptInput.focus();
+          promptInput.style.borderColor = 'var(--error)';
+          setTimeout(() => { promptInput.style.borderColor = ''; }, 1500);
+          return;
+        }
+
+        // Enter loading state
+        submitBtn.classList.add('loading');
+        submitBtn.disabled = true;
+        loadingState.classList.add('visible');
+        outputArea.classList.remove('visible');
+        emptyState.style.display = 'none';
+
+        try {
+          const startTime = performance.now();
+
+          const res = await fetch('/api/assistant', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt }),
+          });
+
+          const data = await res.json();
+          const elapsed = Math.round(performance.now() - startTime);
+
+          renderResult(data, elapsed);
+        } catch (err) {
+          renderResult({
+            status: 'error',
+            final_response: 'Network error: Could not reach the server. Please ensure it is running.',
+            actions_taken: [],
+            agents_used: [],
+          }, 0);
+        } finally {
+          submitBtn.classList.remove('loading');
+          submitBtn.disabled = false;
+          loadingState.classList.remove('visible');
+        }
+      }
+
+      function renderResult(data, elapsedMs) {
+        // Status badge
+        if (data.status === 'success') {
+          responseStatus.className = 'response-status success';
+          responseStatus.textContent = '✓ Success';
+        } else {
+          responseStatus.className = 'response-status error';
+          responseStatus.textContent = '✗ Error';
+        }
+
+        // Meta info
+        metaAgents.textContent = `🤖 Agents: ${data.agents_used?.join(', ') || 'None'}`;
+        metaTime.textContent = `⏱ ${data.processing_time_ms || elapsedMs}ms`;
+        metaActions.textContent = `⚡ Actions: ${data.actions_taken?.length || 0}`;
+
+        // Final response — render with basic formatting
+        finalResponse.innerHTML = formatResponse(data.final_response || '');
+
+        // Actions timeline
+        actionsTimeline.innerHTML = '';
+        if (data.actions_taken && data.actions_taken.length > 0) {
+          data.actions_taken.forEach((action, index) => {
+            const item = document.createElement('div');
+            item.className = 'action-item';
+            item.style.animationDelay = `${index * 0.1}s`;
+
+            const agentLabel = action.agent || 'System';
+            const toolLabel = action.tool || 'unknown';
+            const detail = action.args
+              ? JSON.stringify(action.args, null, 0).substring(0, 200)
+              : '';
+
+            item.innerHTML = `
+              <div class="action-agent">${escapeHtml(agentLabel)}</div>
+              <div class="action-tool">${escapeHtml(toolLabel)}()</div>
+              ${detail ? `<div class="action-detail">${escapeHtml(detail)}</div>` : ''}
+            `;
+            actionsTimeline.appendChild(item);
+          });
+        } else {
+          actionsTimeline.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;">No tool actions were recorded.</p>';
+        }
+
+        // Show output
+        outputArea.classList.add('visible');
+
+        // Smooth scroll to results
+        outputArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      /**
+       * Basic markdown-lite formatter: handles **bold**, `code`, and line breaks.
+       */
+      function formatResponse(text) {
+        let html = escapeHtml(text);
+        // Bold
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        // Inline code
+        html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(99,102,241,0.1);padding:0.15em 0.4em;border-radius:4px;font-family:var(--font-mono);font-size:0.88em;">$1</code>');
+        // Line breaks
+        html = html.replace(/\n/g, '<br>');
+        return html;
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
+    })();
+  </script>
+</body>
+</html>

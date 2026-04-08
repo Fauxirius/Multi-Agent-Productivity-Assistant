@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.env
+.env.local
+videos
+*.webm
+*.mp4
+.DS_Store
+coverage
+.nyc_output
+*.log
